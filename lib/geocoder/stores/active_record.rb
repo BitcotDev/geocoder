@@ -87,7 +87,7 @@ module Geocoder::Store
         end
       end
 
-      private # ----------------------------------------------------------------
+      #private # ----------------------------------------------------------------
 
       ##
       # Get options hash suitable for passing to ActiveRecord.find to get
