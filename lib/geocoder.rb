@@ -300,6 +300,21 @@ module Geocoder
   end
 
   ##
+  # Convenience wrapper around Geocoder.search that exposes a simple API for
+  # working with locations. Results are wrapped in Geocoder::Location objects
+  # with helper methods for accessing common pieces of data such as latitude,
+  # longitude, and address components.
+  #
+  def self.search_location(query)
+    return [] if query.blank?
+    if doc = self.search(query)
+      doc['results'].map{ |result| Location.new(result) }
+    else
+      []
+    end
+  end
+
+  ##
   # Query Google for the coordinates of the given phrase.
   # Returns array [lat,lon] if found, nil if not found or if network error.
   #
@@ -339,6 +354,98 @@ module Geocoder
       end
     rescue SocketError, TimeoutError
       return nil
+    end
+  end
+
+  ##
+  # Wrapper around a single result returned by Google Geocoding API.
+  #
+  class Location
+    def initialize(result)
+      @result = result || {}
+    end
+
+    def coordinates
+      [latitude, longitude]
+    end
+
+    def latitude
+      geometry_value('location', 'lat')
+    end
+
+    def longitude
+      geometry_value('location', 'lng')
+    end
+
+    def address
+      @result['formatted_address']
+    end
+
+    def types
+      @result['types'] || []
+    end
+
+    def city
+      address_component('locality')
+    end
+
+    def state
+      address_component('administrative_area_level_1')
+    end
+
+    def state_code
+      address_component('administrative_area_level_1', 'short_name')
+    end
+
+    def country
+      address_component('country')
+    end
+
+    def country_code
+      address_component('country', 'short_name')
+    end
+
+    def postal_code
+      address_component('postal_code')
+    end
+
+    def viewport
+      geometry['viewport'] || {}
+    end
+
+    def location_type
+      geometry['location_type']
+    end
+
+    def to_hash
+      {
+        :address => address,
+        :coordinates => coordinates,
+        :types => types,
+        :city => city,
+        :state => state,
+        :state_code => state_code,
+        :country => country,
+        :country_code => country_code,
+        :postal_code => postal_code
+      }
+    end
+
+    private
+
+    def geometry
+      @result['geometry'] || {}
+    end
+
+    def geometry_value(section, key)
+      geometry.fetch(section, {})[key]
+    end
+
+    def address_component(type, value_key = 'long_name')
+      component = (@result['address_components'] || []).find do |c|
+        Array(c['types']).include?(type)
+      end
+      component && component[value_key]
     end
   end
 end
