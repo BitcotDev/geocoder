@@ -1,6 +1,42 @@
 require 'rubygems'
 require 'test/unit'
-require 'active_support/core_ext'
+begin
+  require 'active_support/core_ext'
+rescue LoadError
+  require 'json'
+
+  module ActiveSupport
+    module JSON
+      def self.decode(json)
+        ::JSON.parse(json)
+      end
+    end
+  end unless defined?(ActiveSupport::JSON)
+
+  class Object
+    def blank?
+      respond_to?(:empty?) ? !!empty? : !self
+    end
+  end
+
+  class Class
+    def class_inheritable_reader(*syms)
+      syms.each do |sym|
+        define_singleton_method(sym) { inheritable_attributes[sym] }
+      end
+    end
+
+    def write_inheritable_attribute(key, value)
+      inheritable_attributes[key] = value
+    end
+
+    private
+
+    def inheritable_attributes
+      @inheritable_attributes ||= {}
+    end
+  end
+end
 
 $LOAD_PATH.unshift(File.dirname(__FILE__))
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
